@@ -1,65 +1,119 @@
-import Image from "next/image";
+import Link from "next/link";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import parsedData from "@/data/parsed-data.json";
+import type { ParsedData } from "@/types/review-data";
+import { slugify } from "@/lib/slugify";
+
+const data = parsedData as ParsedData;
 
 export default function Home() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+    <div className="min-h-screen bg-background">
+      <div className="container mx-auto py-10 px-4">
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold tracking-tight mb-2">
+            Experience Review Tests
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          <p className="text-muted-foreground text-lg">
+            Compare LLM responses with Experience Review feedback across {data.records.length} companies
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+
+        <div className="rounded-lg border bg-card shadow-sm">
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="w-[200px] font-semibold">Company</TableHead>
+                <TableHead className="w-[300px] font-semibold">URL</TableHead>
+                <TableHead className="text-center font-semibold">LLM Score</TableHead>
+                <TableHead className="text-center font-semibold">UX Score</TableHead>
+                <TableHead className="text-center font-semibold">Recommendations</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {data.records.map((record) => {
+                const llmScore = record.llmResponse?.design_score?.total_score;
+                const uxScore = record.experienceReviewResponse?.result?.ux_score?.design_score;
+                const llmRecommendations = record.llmResponse?.recommendations?.length || 0;
+                const erRecommendations = record.experienceReviewResponse?.result?.recommendations?.length || 0;
+
+                return (
+                  <TableRow key={record.name}>
+                    <TableCell>
+                      <Link
+                        href={`/companies/${slugify(record.name)}`}
+                        className="font-medium hover:underline transition-smooth capitalize"
+                      >
+                        {record.name}
+                      </Link>
+                    </TableCell>
+                    <TableCell>
+                      <a
+                        href={record.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-muted-foreground hover:text-foreground hover:underline truncate block max-w-[300px] transition-smooth"
+                      >
+                        {record.url}
+                      </a>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {llmScore !== undefined ? (
+                        <Badge 
+                          variant={llmScore >= 70 ? "default" : "secondary"}
+                          className="transition-smooth"
+                        >
+                          {llmScore}
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {uxScore !== undefined ? (
+                        <Badge 
+                          variant={uxScore >= 70 ? "default" : "secondary"}
+                          className="transition-smooth"
+                        >
+                          {uxScore}
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <div className="flex items-center justify-center gap-2">
+                        <span className="text-sm font-medium">
+                          {llmRecommendations}
+                        </span>
+                        <span className="text-muted-foreground">/</span>
+                        <span className="text-sm font-medium">
+                          {erRecommendations}
+                        </span>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
         </div>
-      </main>
+
+        <div className="mt-6 text-sm text-muted-foreground">
+          <p>
+            Last updated: {new Date(data.generatedAt).toLocaleDateString()} at{" "}
+            {new Date(data.generatedAt).toLocaleTimeString()}
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
