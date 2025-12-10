@@ -68,7 +68,7 @@ export default function Home() {
                     <TableCell className="text-center">
                       {llmScore !== undefined ? (
                         <Badge 
-                          variant={llmScore >= 70 ? "default" : "secondary"}
+                          variant="default"
                           className="transition-smooth"
                         >
                           {llmScore}
@@ -80,7 +80,7 @@ export default function Home() {
                     <TableCell className="text-center">
                       {uxScore !== undefined ? (
                         <Badge 
-                          variant={uxScore >= 70 ? "default" : "secondary"}
+                           variant="default"
                           className="transition-smooth"
                         >
                           {uxScore}
@@ -92,11 +92,11 @@ export default function Home() {
                     <TableCell className="text-center">
                       <div className="flex items-center justify-center gap-2">
                         <span className="text-sm font-medium">
-                          {llmRecommendations}
+                          Gemini {llmRecommendations}  
                         </span>
                         <span className="text-muted-foreground">/</span>
                         <span className="text-sm font-medium">
-                          {erRecommendations}
+                          Featurely {erRecommendations}
                         </span>
                       </div>
                     </TableCell>
