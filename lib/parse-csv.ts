@@ -180,7 +180,7 @@ function generateAllVersions() {
   const latestVersion = versionedDataList.find(v => v.version.isLatest);
   if (latestVersion) {
     const legacyPath = path.join(dataDir, 'parsed-data.json');
-    fs.writeFileSync(legacyPath, JSON.stringify(latestVersion.data, null, 2), 'utf-8');
+    fs.writeFileSync(legacyPath, JSON.stringify(latestVersion, null, 2), 'utf-8');
     console.log(`🔗 Legacy file created (latest version)`);
     console.log(`   📁 ${legacyPath}\n`);
   }
