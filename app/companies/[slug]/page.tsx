@@ -6,9 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, ExternalLink } from "lucide-react";
-import { slugify, findBySlug } from "@/lib/slugify";
+import { findBySlug } from "@/lib/slugify";
 import { getAvailableVersions, formatVersionDateShort } from "@/lib/version-utils";
-import { VersionSelector } from "@/components/version-selector";
 import { ScoreComparison, ScoreDeltaBadge } from "@/components/score-comparison";
 import { ExpandableText } from "@/components/expandable-text";
 import type { ParsedData, VersionedData, VersionsIndex, ReviewRecord } from "@/types/review-data";
@@ -68,7 +67,7 @@ export default async function CompanyDetailPage({ params }: PageProps) {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto py-10 px-4 max-w-[1800px]">
+      <div className="container mx-auto py-10 px-4 max-w-[1400px]">
         {/* Header */}
         <div className="mb-8">
           <Link
@@ -78,7 +77,7 @@ export default async function CompanyDetailPage({ params }: PageProps) {
             <ArrowLeft className="h-4 w-4" />
             Back to list
           </Link>
-          <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
+          <div className="flex flex-col sm:flex-row items-start justify-between gap-4 mb-6">
             <div className="flex-1">
               <h1 className="text-3xl sm:text-4xl font-bold tracking-tight mb-2 capitalize">
                 {record.name}
@@ -94,434 +93,413 @@ export default async function CompanyDetailPage({ params }: PageProps) {
               </a>
             </div>
           </div>
-        </div>
 
-        {/* Version Selector */}
-        <div className="mb-8">
-          <VersionSelector
-            versions={versionsIndex.versions}
-            companySlug={slug}
-            availableVersions={availableVersions}
-          />
-        </div>
+          {/* Global Version Tabs */}
+          <Tabs defaultValue="v2" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 max-w-md">
+              {versionsIndex.versions.map((version) => {
+                const hasData = availableVersions.includes(version.id);
+                
+                return (
+                  <TabsTrigger 
+                    key={version.id} 
+                    value={version.id}
+                    disabled={!hasData}
+                  >
+                    {version.label} ({formatVersionDateShort(version.date)})
+                    {version.isLatest && (
+                      <Badge variant="default" className="ml-2 text-[9px] px-1 py-0">
+                        Latest
+                      </Badge>
+                    )}
+                  </TabsTrigger>
+                );
+              })}
+            </TabsList>
 
-        {/* Screenshot Comparison */}
-        {(versionRecords.v1?.screenshotUrl || versionRecords.v2?.screenshotUrl) && (
-          <div className="mb-8">
-            <Card className="overflow-hidden">
-              <CardHeader>
-                <CardTitle>Screenshot Comparison</CardTitle>
-                <CardDescription>Compare screenshots across versions</CardDescription>
-              </CardHeader>
-              <CardContent className="p-4">
-                <Tabs defaultValue="v2" className="w-full">
-                  <TabsList className="grid w-full grid-cols-2 max-w-md">
-                    {versionsIndex.versions.map((version) => {
-                      const versionRecord = versionRecords[version.id];
-                      const hasScreenshot = versionRecord?.screenshotUrl;
-                      
-                      return (
-                        <TabsTrigger 
-                          key={version.id} 
-                          value={version.id}
-                          disabled={!hasScreenshot}
-                          className="relative"
-                        >
-                          <span className={`h-2 w-2 rounded-full mr-2 ${
-                            hasScreenshot ? 'bg-green-500' : 'bg-muted-foreground'
-                          }`} />
-                          {version.label}
-                          {version.isLatest && (
-                            <Badge variant="default" className="ml-2 text-[9px] px-1 py-0">
-                              Latest
-                            </Badge>
-                          )}
-                        </TabsTrigger>
-                      );
-                    })}
-                  </TabsList>
-                  
-                  {versionsIndex.versions.map((version) => {
-                    const versionRecord = versionRecords[version.id];
-                    const screenshotUrl = versionRecord?.screenshotUrl;
-                    
-                    return (
-                      <TabsContent key={version.id} value={version.id} className="mt-4">
-                        {screenshotUrl ? (
-                          <div className="space-y-3">
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <p className="text-sm font-medium">
-                                  {version.label} ({formatVersionDateShort(version.date)})
-                                </p>
-                                <p className="text-xs text-muted-foreground">
-                                  Captured screenshot
-                                </p>
-                              </div>
-                              <a
-                                href={screenshotUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="font-bold text-muted-foreground hover:text-foreground flex items-center gap-1"
-                              >
-                                Open full size
-                                <ExternalLink className="h-3 w-3" />
-                              </a>
-                            </div>
-                            <div className="relative w-full aspect-video bg-muted rounded-md overflow-hidden border">
-                              <Image
-                                src={screenshotUrl}
-                                alt={`Screenshot of ${record.name} - ${version.label}`}
-                                fill
-                                className="object-contain transition-smooth hover:scale-[1.02]"
-                                unoptimized
-                              />
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="py-12 text-center">
-                            <Badge variant="secondary" className="mb-2">No Screenshot</Badge>
-                            <p className="text-sm text-muted-foreground">
-                              No screenshot available for this version
-                            </p>
-                          </div>
-                        )}
-                      </TabsContent>
-                    );
-                  })}
-                </Tabs>
-              </CardContent>
-            </Card>
-          </div>
-        )}
-
-        {/* Company Info */}
-        {record.companyInfo && (
-          <Card className="mb-8">
-            <CardHeader>
-              <CardTitle>Company Information</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">{record.companyInfo}</p>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Metadata Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          {record.actions.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Actions</CardTitle>
-                <CardDescription>User actions tested</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap gap-2">
-                  {record.actions.map((action, i) => (
-                    <Badge key={i} variant="outline">
-                      {action}
-                    </Badge>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {record.emotions.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Emotions</CardTitle>
-                <CardDescription>Target emotional responses</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap gap-2">
-                  {record.emotions.map((emotion, i) => (
-                    <Badge key={i} variant="secondary">
-                      {emotion}
-                    </Badge>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-
-        {/* 4-Column Comparison */}
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold mb-6">Version Comparison</h2>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-6">
             {versionsIndex.versions.map((version) => {
               const versionRecord = versionRecords[version.id];
-              const llmResponse = versionRecord?.llmResponse;
-              const erResponse = versionRecord?.experienceReviewResponse;
               const hasData = availableVersions.includes(version.id);
+              
+              if (!hasData) {
+                return (
+                  <TabsContent key={version.id} value={version.id} className="mt-6">
+                    <Card>
+                      <CardContent className="py-12 text-center">
+                        <Badge variant="secondary" className="mb-2">Not Available</Badge>
+                        <p className="text-sm text-muted-foreground">
+                          No data available for this version
+                        </p>
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+                );
+              }
+
+              const currentRecord = versionRecord || record;
+              const llmResponse = currentRecord.llmResponse;
+              const erResponse = currentRecord.experienceReviewResponse;
 
               return (
-                <div key={`${version.id}-llm-er`} className="contents">
-                  {/* LLM Column */}
-                  <div className="space-y-4">
-                    <div className="sticky top-4">
-                      <h3 className="text-lg font-semibold mb-2 flex items-center gap-2">
-                        <span className={`h-2 w-2 rounded-full ${
-                          hasData ? 'bg-blue-500 animate-pulse' : 'bg-muted-foreground'
-                        }`}></span>
-                        LLM - {version.label}
-                      </h3>
-                    </div>
+                <TabsContent key={version.id} value={version.id} className="mt-6 space-y-8">
+                  {/* Screenshot for this version */}
+                  {currentRecord.screenshotUrl && (
+                    <Card className="overflow-hidden">
+                      <CardHeader>
+                        <CardTitle>Screenshot</CardTitle>
+                        <CardDescription>
+                          Captured on {formatVersionDateShort(version.date)}
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="p-4">
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <p className="text-sm font-medium">
+                              Website Preview
+                            </p>
+                            <a
+                              href={currentRecord.screenshotUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text font-bold text-muted-foreground hover:text-foreground flex items-center gap-1"
+                            >
+                              Open full size
+                              <ExternalLink className="h-3 w-3" />
+                            </a>
+                          </div>
+                          <div className="relative w-full aspect-video bg-muted rounded-md overflow-hidden border">
+                            <Image
+                              src={currentRecord.screenshotUrl}
+                              alt={`Screenshot of ${currentRecord.name} - ${version.label}`}
+                              fill
+                              className="object-contain transition-smooth hover:scale-[1.02]"
+                              unoptimized
+                            />
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
 
-                    {!hasData ? (
-                      <Card className="shadow-sm">
-                        <CardContent className="py-12 text-center">
-                          <Badge variant="secondary" className="mb-2">Not Available</Badge>
-                          <p className="text-sm text-muted-foreground">
-                            No LLM data in this version
-                          </p>
-                        </CardContent>
-                      </Card>
-                    ) : llmResponse ? (
-                      <>
-                        <Card className="shadow-sm">
+                  {/* Company Info */}
+                  {currentRecord.companyInfo && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Company Information</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-muted-foreground">{currentRecord.companyInfo}</p>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Metadata Grid */}
+                  {(currentRecord.actions.length > 0 || currentRecord.emotions.length > 0) && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {currentRecord.actions.length > 0 && (
+                        <Card>
                           <CardHeader>
-                            <CardTitle className="flex items-center justify-between">
-                              Design Score
-                              {version.id === 'v2' && versionRecords['v1']?.llmResponse && (
-                                <ScoreDeltaBadge
-                                  oldScore={versionRecords['v1'].llmResponse?.design_score?.total_score}
-                                  newScore={llmResponse.design_score.total_score}
-                                />
-                              )}
-                            </CardTitle>
+                            <CardTitle>Actions</CardTitle>
+                            <CardDescription>User actions tested</CardDescription>
                           </CardHeader>
-                          <CardContent className="space-y-4">
-                            <div className="bg-linear-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900 p-6 rounded-lg">
-                              {version.id === 'v2' && versionRecords['v1']?.llmResponse ? (
-                                <ScoreComparison
-                                  oldScore={versionRecords['v1'].llmResponse?.design_score?.total_score}
-                                  newScore={llmResponse.design_score.total_score}
-                                  showPercentage
-                                />
-                              ) : (
-                                <div className="text-5xl font-bold text-blue-600 dark:text-blue-400">
-                                  {llmResponse.design_score.total_score}
-                                  <span className="text-2xl text-muted-foreground ml-1">/100</span>
-                                </div>
-                              )}
-                            </div>
-
-                            <Separator />
-
-                            <div className="space-y-3">
-                              <div>
-                                <div className="flex justify-between mb-1">
-                                  <span className="text-sm font-medium">Usability Heuristics</span>
-                                  <span className="text-sm text-muted-foreground">
-                                    {llmResponse.design_score.usability_heuristics.score}/
-                                    {llmResponse.design_score.usability_heuristics.max_score}
-                                  </span>
-                                </div>
-                                <ExpandableText
-                                  text={llmResponse.design_score.usability_heuristics.description}
-                                  maxLength={150}
-                                  className="text-xs text-muted-foreground"
-                                />
-                              </div>
-
-                              <div>
-                                <div className="flex justify-between mb-1">
-                                  <span className="text-sm font-medium">Visual Design</span>
-                                  <span className="text-sm text-muted-foreground">
-                                    {llmResponse.design_score.visual_design.score}/
-                                    {llmResponse.design_score.visual_design.max_score}
-                                  </span>
-                                </div>
-                                <ExpandableText
-                                  text={llmResponse.design_score.visual_design.description}
-                                  maxLength={150}
-                                  className="text-xs text-muted-foreground"
-                                />
-                              </div>
-
-                              <div>
-                                <div className="flex justify-between mb-1">
-                                  <span className="text-sm font-medium">Modern UX Practices</span>
-                                  <span className="text-sm text-muted-foreground">
-                                    {llmResponse.design_score.modern_ux_practices.score}/
-                                    {llmResponse.design_score.modern_ux_practices.max_score}
-                                  </span>
-                                </div>
-                                <ExpandableText
-                                  text={llmResponse.design_score.modern_ux_practices.description}
-                                  maxLength={150}
-                                  className="text-xs text-muted-foreground"
-                                />
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-
-                        <Card className="shadow-sm">
-                          <CardHeader>
-                            <CardTitle>Recommendations</CardTitle>
-                            <CardDescription>
-                              {llmResponse.recommendations.length} recommendation
-                              {llmResponse.recommendations.length !== 1 ? 's' : ''}
-                            </CardDescription>
-                          </CardHeader>
-                          <CardContent className="space-y-3">
-                            {llmResponse.recommendations.map((rec) => (
-                              <div
-                                key={rec.id}
-                                className="p-3 border rounded-lg space-y-2 transition-smooth hover:shadow-md hover:border-blue-500/50 bg-card"
-                              >
-                                <div className="flex items-start justify-between gap-2">
-                                  <h4 className="font-semibold text-xs sm:text-sm">{rec.title}</h4>
-                                  <Badge variant="outline" className="shrink-0 text-[10px]">
-                                    {rec.category}
-                                  </Badge>
-                                </div>
-                                <ExpandableText
-                                  text={rec.explanation}
-                                  maxLength={150}
-                                  className="text-xs text-muted-foreground"
-                                />
-                              </div>
-                            ))}
-                          </CardContent>
-                        </Card>
-                      </>
-                    ) : (
-                      <Card className="shadow-sm">
-                        <CardContent className="py-12 text-center text-muted-foreground">
-                          No LLM response data
-                        </CardContent>
-                      </Card>
-                    )}
-                  </div>
-
-                  {/* Experience Review Column */}
-                  <div className="space-y-4">
-                    <div className="sticky top-4">
-                      <h3 className="text-lg font-semibold mb-2 flex items-center gap-2">
-                        <span className={`h-2 w-2 rounded-full ${
-                          hasData ? 'bg-green-500 animate-pulse' : 'bg-muted-foreground'
-                        }`}></span>
-                        ER - {version.label}
-                      </h3>
-                    </div>
-
-                    {!hasData ? (
-                      <Card className="shadow-sm">
-                        <CardContent className="py-12 text-center">
-                          <Badge variant="secondary" className="mb-2">Not Available</Badge>
-                          <p className="text-sm text-muted-foreground">
-                            No Experience Review data in this version
-                          </p>
-                        </CardContent>
-                      </Card>
-                    ) : erResponse ? (
-                      <>
-                        <Card className="shadow-sm">
-                          <CardHeader>
-                            <CardTitle className="flex items-center justify-between">
-                              UX Score
-                              {version.id === 'v2' && versionRecords['v1']?.experienceReviewResponse && (
-                                <ScoreDeltaBadge
-                                  oldScore={versionRecords['v1'].experienceReviewResponse?.result?.ux_score?.design_score}
-                                  newScore={erResponse.result.ux_score.design_score}
-                                />
-                              )}
-                            </CardTitle>
-                          </CardHeader>
-                          <CardContent className="space-y-4">
-                            <div className="bg-linear-to-br from-green-50 to-green-100 dark:from-green-950 dark:to-green-900 p-6 rounded-lg">
-                              {version.id === 'v2' && versionRecords['v1']?.experienceReviewResponse ? (
-                                <ScoreComparison
-                                  oldScore={versionRecords['v1'].experienceReviewResponse?.result?.ux_score?.design_score}
-                                  newScore={erResponse.result.ux_score.design_score}
-                                  showPercentage
-                                />
-                              ) : (
-                                <div className="text-5xl font-bold text-green-600 dark:text-green-400">
-                                  {erResponse.result.ux_score.design_score}
-                                  <span className="text-2xl text-muted-foreground ml-1">/100</span>
-                                </div>
-                              )}
-                            </div>
-
-                            <Separator />
-
-                            <div className="space-y-3">
-                              {erResponse.result.ux_score.justification.map((just, i) => (
-                                <div key={i}>
-                                  <div className="flex justify-between mb-1">
-                                    <span className="text-sm font-medium">{just.category}</span>
-                                    <span className="text-sm text-muted-foreground">
-                                      {just.score}
-                                    </span>
-                                  </div>
-                                  <ExpandableText
-                                    text={just.description}
-                                    maxLength={150}
-                                    className="text-xs text-muted-foreground"
-                                  />
-                                </div>
+                          <CardContent>
+                            <div className="flex flex-wrap gap-2">
+                              {currentRecord.actions.map((action, i) => (
+                                <Badge key={i} variant="outline">
+                                  {action}
+                                </Badge>
                               ))}
                             </div>
                           </CardContent>
                         </Card>
+                      )}
 
-                        <Card className="shadow-sm">
+                      {currentRecord.emotions.length > 0 && (
+                        <Card>
                           <CardHeader>
-                            <CardTitle>Recommendations</CardTitle>
-                            <CardDescription>
-                              {erResponse.result.recommendations.length} recommendation
-                              {erResponse.result.recommendations.length !== 1 ? 's' : ''}
-                            </CardDescription>
+                            <CardTitle>Emotions</CardTitle>
+                            <CardDescription>Target emotional responses</CardDescription>
                           </CardHeader>
-                          <CardContent className="space-y-3">
-                            {erResponse.result.recommendations.map((rec, i) => (
-                              <div
-                                key={i}
-                                className="p-3 border rounded-lg space-y-2 transition-smooth hover:shadow-md hover:border-green-500/50 bg-card"
-                              >
-                                <div className="flex items-start justify-between gap-2">
-                                  <h4 className="font-semibold text-xs sm:text-sm">{rec.title}</h4>
-                                  <Badge
-                                    variant={
-                                      rec.tags === 'Critical'
-                                        ? 'destructive'
-                                        : rec.tags === 'Significant'
-                                        ? 'default'
-                                        : 'secondary'
-                                    }
-                                    className="shrink-0 text-[10px]"
-                                  >
-                                    {rec.tags}
-                                  </Badge>
-                                </div>
-                                <ExpandableText
-                                  text={rec.recommendation}
-                                  maxLength={150}
-                                  className="text-xs text-muted-foreground"
-                                />
-                              </div>
-                            ))}
+                          <CardContent>
+                            <div className="flex flex-wrap gap-2">
+                              {currentRecord.emotions.map((emotion, i) => (
+                                <Badge key={i} variant="secondary">
+                                  {emotion}
+                                </Badge>
+                              ))}
+                            </div>
                           </CardContent>
                         </Card>
-                      </>
-                    ) : (
-                      <Card className="shadow-sm">
-                        <CardContent className="py-12 text-center text-muted-foreground">
-                          No Experience Review data
-                        </CardContent>
-                      </Card>
-                    )}
+                      )}
+                    </div>
+                  )}
+
+                  {/* Personas */}
+                  {currentRecord.targetAudience?.data?.personas && currentRecord.targetAudience.data.personas.length > 0 && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Target Personas</CardTitle>
+                        <CardDescription>User personas analyzed in this review</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {currentRecord.targetAudience.data.personas.map((persona, i) => (
+                            <div key={i} className="p-4 border rounded-lg transition-smooth hover:shadow-md hover:border-primary/50">
+                              <h4 className="font-semibold mb-1 text-sm sm:text-base">{persona.title}</h4>
+                              <p className="text-xs text-muted-foreground mb-3">{persona.location}</p>
+                              <p className="text-xs sm:text-sm text-muted-foreground line-clamp-4">
+                                {persona.description}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Analysis Comparison */}
+                  <div>
+                    <h2 className="text-2xl font-bold mb-6">Analysis</h2>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      {/* LLM Column */}
+                      <div className="space-y-4">
+                        <h3 className="text-lg font-semibold flex items-center gap-2">
+                          <span className="h-2 w-2 rounded-full bg-blue-500"></span>
+                          LLM Response (Gemini)
+                        </h3>
+
+                        {llmResponse ? (
+                          <>
+                            <Card className="shadow-sm">
+                              <CardHeader>
+                                <CardTitle className="flex items-center justify-between">
+                                  Score
+                                  {version.id === 'v2' && versionRecords['v1']?.llmResponse && (
+                                    <ScoreDeltaBadge
+                                      oldScore={versionRecords['v1'].llmResponse?.design_score?.total_score}
+                                      newScore={llmResponse.design_score.total_score}
+                                    />
+                                  )}
+                                </CardTitle>
+                              </CardHeader>
+                              <CardContent className="space-y-4">
+                                <div className="bg-linear-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900 p-6 rounded-lg">
+                                  {version.id === 'v2' && versionRecords['v1']?.llmResponse ? (
+                                    <ScoreComparison
+                                      oldScore={versionRecords['v1'].llmResponse?.design_score?.total_score}
+                                      newScore={llmResponse.design_score.total_score}
+                                      showPercentage
+                                    />
+                                  ) : (
+                                    <div className="text-5xl font-bold text-blue-600 dark:text-blue-400">
+                                      {llmResponse.design_score.total_score}
+                                      <span className="text-2xl text-muted-foreground ml-1">/100</span>
+                                    </div>
+                                  )}
+                                </div>
+
+                                <Separator />
+
+                                <div className="space-y-3">
+                                  <div>
+                                    <div className="flex justify-between mb-1">
+                                      <span className="text-sm font-medium">Usability Heuristics</span>
+                                      <span className="text-sm text-muted-foreground">
+                                        {llmResponse.design_score.usability_heuristics.score}/
+                                        {llmResponse.design_score.usability_heuristics.max_score}
+                                      </span>
+                                    </div>
+                                    <ExpandableText
+                                      text={llmResponse.design_score.usability_heuristics.description}
+                                      maxLength={150}
+                                      className="text-xs text-muted-foreground"
+                                    />
+                                  </div>
+
+                                  <div>
+                                    <div className="flex justify-between mb-1">
+                                      <span className="text-sm font-medium">Visual Design</span>
+                                      <span className="text-sm text-muted-foreground">
+                                        {llmResponse.design_score.visual_design.score}/
+                                        {llmResponse.design_score.visual_design.max_score}
+                                      </span>
+                                    </div>
+                                    <ExpandableText
+                                      text={llmResponse.design_score.visual_design.description}
+                                      maxLength={150}
+                                      className="text-xs text-muted-foreground"
+                                    />
+                                  </div>
+
+                                  <div>
+                                    <div className="flex justify-between mb-1">
+                                      <span className="text-sm font-medium">Modern UX Practices</span>
+                                      <span className="text-sm text-muted-foreground">
+                                        {llmResponse.design_score.modern_ux_practices.score}/
+                                        {llmResponse.design_score.modern_ux_practices.max_score}
+                                      </span>
+                                    </div>
+                                    <ExpandableText
+                                      text={llmResponse.design_score.modern_ux_practices.description}
+                                      maxLength={150}
+                                      className="text-xs text-muted-foreground"
+                                    />
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+
+                            <Card className="shadow-sm">
+                              <CardHeader>
+                                <CardTitle>Recommendations</CardTitle>
+                                <CardDescription>
+                                  {llmResponse.recommendations.length} recommendation
+                                  {llmResponse.recommendations.length !== 1 ? 's' : ''}
+                                </CardDescription>
+                              </CardHeader>
+                              <CardContent className="space-y-3">
+                                {llmResponse.recommendations.map((rec) => (
+                                  <div
+                                    key={rec.id}
+                                    className="p-3 border rounded-lg space-y-2 transition-smooth hover:shadow-md hover:border-blue-500/50 bg-card"
+                                  >
+                                    <div className="flex items-start justify-between gap-2">
+                                      <h4 className="font-semibold text-xs sm:text-sm">{rec.title}</h4>
+                                      <Badge variant="outline" className="shrink-0 text-[10px]">
+                                        {rec.category}
+                                      </Badge>
+                                    </div>
+                                    <ExpandableText
+                                      text={rec.explanation}
+                                      maxLength={150}
+                                      className="text-xs text-muted-foreground"
+                                    />
+                                  </div>
+                                ))}
+                              </CardContent>
+                            </Card>
+                          </>
+                        ) : (
+                          <Card className="shadow-sm">
+                            <CardContent className="py-12 text-center text-muted-foreground">
+                              No LLM response data
+                            </CardContent>
+                          </Card>
+                        )}
+                      </div>
+
+                      {/* Experience Review Column */}
+                      <div className="space-y-4">
+                        <h3 className="text-lg font-semibold flex items-center gap-2">
+                          <span className="h-2 w-2 rounded-full bg-green-500"></span>
+                          Experience Review Response
+                        </h3>
+
+                        {erResponse ? (
+                          <>
+                            <Card className="shadow-sm">
+                              <CardHeader>
+                                <CardTitle className="flex items-center justify-between">
+                                  Score
+                                  {version.id === 'v2' && versionRecords['v1']?.experienceReviewResponse && (
+                                    <ScoreDeltaBadge
+                                      oldScore={versionRecords['v1'].experienceReviewResponse?.result?.ux_score?.design_score}
+                                      newScore={erResponse.result.ux_score.design_score}
+                                    />
+                                  )}
+                                </CardTitle>
+                              </CardHeader>
+                              <CardContent className="space-y-4">
+                                <div className="bg-linear-to-br from-green-50 to-green-100 dark:from-green-950 dark:to-green-900 p-6 rounded-lg">
+                                  {version.id === 'v2' && versionRecords['v1']?.experienceReviewResponse ? (
+                                    <ScoreComparison
+                                      oldScore={versionRecords['v1'].experienceReviewResponse?.result?.ux_score?.design_score}
+                                      newScore={erResponse.result.ux_score.design_score}
+                                      showPercentage
+                                    />
+                                  ) : (
+                                    <div className="text-5xl font-bold text-green-600 dark:text-green-400">
+                                      {erResponse.result.ux_score.design_score}
+                                      <span className="text-2xl text-muted-foreground ml-1">/100</span>
+                                    </div>
+                                  )}
+                                </div>
+
+                                <Separator />
+
+                                <div className="space-y-3">
+                                  {erResponse.result.ux_score.justification.map((just, i) => (
+                                    <div key={i}>
+                                      <div className="flex justify-between mb-1">
+                                        <span className="text-sm font-medium">{just.category}</span>
+                                        <span className="text-sm text-muted-foreground">
+                                          {just.score}
+                                        </span>
+                                      </div>
+                                      <ExpandableText
+                                        text={just.description}
+                                        maxLength={150}
+                                        className="text-xs text-muted-foreground"
+                                      />
+                                    </div>
+                                  ))}
+                                </div>
+                              </CardContent>
+                            </Card>
+
+                            <Card className="shadow-sm">
+                              <CardHeader>
+                                <CardTitle>Recommendations</CardTitle>
+                                <CardDescription>
+                                  {erResponse.result.recommendations.length} recommendation
+                                  {erResponse.result.recommendations.length !== 1 ? 's' : ''}
+                                </CardDescription>
+                              </CardHeader>
+                              <CardContent className="space-y-3">
+                                {erResponse.result.recommendations.map((rec, i) => (
+                                  <div
+                                    key={i}
+                                    className="p-3 border rounded-lg space-y-2 transition-smooth hover:shadow-md hover:border-green-500/50 bg-card"
+                                  >
+                                    <div className="flex items-start justify-between gap-2">
+                                      <h4 className="font-semibold text-xs sm:text-sm">{rec.title}</h4>
+                                      <Badge
+                                        variant={
+                                          rec.tags === 'Critical'
+                                            ? 'destructive'
+                                            : rec.tags === 'Significant'
+                                            ? 'default'
+                                            : 'secondary'
+                                        }
+                                        className="shrink-0 text-[10px]"
+                                      >
+                                        {rec.tags}
+                                      </Badge>
+                                    </div>
+                                    <ExpandableText
+                                      text={rec.recommendation}
+                                      maxLength={150}
+                                      className="text-xs text-muted-foreground"
+                                    />
+                                  </div>
+                                ))}
+                              </CardContent>
+                            </Card>
+                          </>
+                        ) : (
+                          <Card className="shadow-sm">
+                            <CardContent className="py-12 text-center text-muted-foreground">
+                              No Experience Review data
+                            </CardContent>
+                          </Card>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                </div>
+                </TabsContent>
               );
             })}
-          </div>
+          </Tabs>
         </div>
       </div>
     </div>
