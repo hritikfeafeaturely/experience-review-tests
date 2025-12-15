@@ -8,11 +8,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import parsedData from "@/data/parsed-data.json";
-import type { ParsedData } from "@/types/review-data";
+import { ChevronRight } from "lucide-react";
+import { ClickableTableRow } from "@/components/clickable-table-row";
+import parsedDataV2 from "@/data/parsed-data-v2.json";
+import type { VersionedData } from "@/types/review-data";
 import { slugify } from "@/lib/slugify";
 
-const data = parsedData as ParsedData;
+// Use latest version (v2) for the main table
+const data = (parsedDataV2 as VersionedData).data;
 
 export default function Home() {
   return (
@@ -36,6 +39,7 @@ export default function Home() {
                 <TableHead className="text-center font-semibold">LLM Score</TableHead>
                 <TableHead className="text-center font-semibold">UX Score</TableHead>
                 <TableHead className="text-center font-semibold">Recommendations</TableHead>
+                <TableHead className="w-[100px]"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -44,13 +48,18 @@ export default function Home() {
                 const uxScore = record.experienceReviewResponse?.result?.ux_score?.design_score;
                 const llmRecommendations = record.llmResponse?.recommendations?.length || 0;
                 const erRecommendations = record.experienceReviewResponse?.result?.recommendations?.length || 0;
+                const companySlug = slugify(record.name);
 
                 return (
-                  <TableRow key={record.name}>
+                  <ClickableTableRow 
+                    key={record.name}
+                    href={`/companies/${companySlug}`}
+                    className="cursor-pointer group hover:bg-muted/50"
+                  >
                     <TableCell>
                       <Link
-                        href={`/companies/${slugify(record.name)}`}
-                        className="font-medium hover:underline transition-smooth capitalize"
+                        href={`/companies/${companySlug}`}
+                        className="font-medium group-hover:text-primary transition-smooth capitalize block"
                       >
                         {record.name}
                       </Link>
@@ -100,7 +109,16 @@ export default function Home() {
                         </span>
                       </div>
                     </TableCell>
-                  </TableRow>
+                    <TableCell className="text-right">
+                      <Link
+                        href={`/companies/${companySlug}`}
+                        className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground group-hover:text-primary transition-smooth"
+                      >
+                        View Details
+                        <ChevronRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                      </Link>
+                    </TableCell>
+                  </ClickableTableRow>
                 );
               })}
             </TableBody>

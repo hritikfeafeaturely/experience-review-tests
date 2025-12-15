@@ -42,3 +42,5 @@ next-env.d.ts
 
 # generated data
 /data/parsed-data.json
+/data/parsed-data-*.json
+/data/versions-index.json

@@ -89,7 +89,7 @@ export interface NextAction {
   href: string;
   method: string;
   description: string;
-  data?: any;
+  data?: unknown;
 }
 
 export interface ExperienceReviewResponse {
@@ -106,7 +106,7 @@ export interface ExperienceReviewResponse {
 }
 
 export interface SessionData {
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface ReviewRecord {
@@ -127,5 +127,40 @@ export interface ReviewRecord {
 export interface ParsedData {
   records: ReviewRecord[];
   generatedAt: string;
+}
+
+// Version-related types
+
+export interface VersionMetadata {
+  id: string;
+  filename: string;
+  date: string;
+  label: string;
+  isLatest: boolean;
+}
+
+export interface VersionedData {
+  version: VersionMetadata;
+  data: ParsedData;
+}
+
+export interface CompanyVersionAvailability {
+  companyName: string;
+  slug: string;
+  availableVersions: string[]; // Array of version IDs
+}
+
+export interface VersionsIndex {
+  versions: VersionMetadata[];
+  companies: CompanyVersionAvailability[];
+  generatedAt: string;
+}
+
+export interface ScoreComparison {
+  oldScore: number | null;
+  newScore: number | null;
+  delta: number | null;
+  percentChange: number | null;
+  trend: 'improved' | 'declined' | 'unchanged' | 'new' | 'removed';
 }
 
