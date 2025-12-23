@@ -14,11 +14,13 @@ interface CSVRow {
   'Target Audience': string;
   Actions: string;
   Emotions: string;
-  'LLM Response': string;
+  'LLM Response'?: string;
+  'LLM Response (Gemini)'?: string;
   'Persona Task IDs'?: string;
   'Persona User Data'?: string;
   'Session Data'?: string;
-  'Start Action Response': string;
+  'Start Action Response'?: string;
+  'Start Action Response (experience review)'?: string;
 }
 
 function safeJSONParse<T>(jsonString: string): T | null {
@@ -61,11 +63,13 @@ function parseCSVFile(filename: string): ReviewRecord[] {
       ? row.Emotions.split(',').map((e) => e.trim()).filter(Boolean)
       : [];
 
-    // Parse JSON columns
+    // Parse JSON columns (handle different column name variations)
     const targetAudience = safeJSONParse<TargetAudienceData>(row['Target Audience']);
-    const llmResponse = safeJSONParse<LLMResponse>(row['LLM Response']);
+    const llmResponse = safeJSONParse<LLMResponse>(row['LLM Response'] || row['LLM Response (Gemini)'] || '');
     const sessionData = row['Session Data'] ? safeJSONParse<SessionData>(row['Session Data']) : null;
-    const experienceReviewResponse = safeJSONParse<ExperienceReviewResponse>(row['Start Action Response']);
+    const experienceReviewResponse = safeJSONParse<ExperienceReviewResponse>(
+      row['Start Action Response'] || row['Start Action Response (experience review)'] || ''
+    );
 
     return {
       name: row.Name || '',

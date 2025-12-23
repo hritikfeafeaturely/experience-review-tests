@@ -20,10 +20,12 @@ const versionsIndex = versionsIndexData as VersionsIndex;
 // Dynamic imports for version data
 import v1Data from "@/data/parsed-data-v1.json";
 import v2Data from "@/data/parsed-data-v2.json";
+import v3Data from "@/data/parsed-data-v3.json";
 
 const versionDataMap: Record<string, ParsedData> = {
   v1: (v1Data as VersionedData).data,
   v2: (v2Data as VersionedData).data,
+  v3: (v3Data as VersionedData).data,
 };
 
 export function generateStaticParams() {
@@ -94,9 +96,46 @@ export default async function CompanyDetailPage({ params }: PageProps) {
             </div>
           </div>
 
+          {/* Version Information Card */}
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="text-lg">Version Comparison Guide</CardTitle>
+              <CardDescription>Understanding the differences between each version</CardDescription>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="p-4 border rounded-lg space-y-2">
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline">Version 1</Badge>
+                  <span className="text-xs text-muted-foreground">Dec 10, 2025</span>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Experience Review vs Gemini API - Initial comparison between automated review system and LLM analysis
+                </p>
+              </div>
+              <div className="p-4 border rounded-lg space-y-2">
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline">Version 2</Badge>
+                  <span className="text-xs text-muted-foreground">Dec 15, 2025</span>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Same as Version 1 with updated screenshot capture API for improved screenshot capture
+                </p>
+              </div>
+              <div className="p-4 border rounded-lg space-y-2 border-primary/50 bg-primary/5">
+                <div className="flex items-center gap-2">
+                  <Badge variant="default">Version 3</Badge>
+                  <span className="text-xs text-muted-foreground">Dec 22, 2025</span>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Experience Review with Cognition API integrated 
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Global Version Tabs */}
-          <Tabs defaultValue="v2" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 max-w-md">
+          <Tabs defaultValue="v3" className="w-full">
+            <TabsList className="grid w-full grid-cols-3 max-w-2xl">
               {versionsIndex.versions.map((version) => {
                 const hasData = availableVersions.includes(version.id);
                 
@@ -397,66 +436,79 @@ export default async function CompanyDetailPage({ params }: PageProps) {
 
                         {erResponse ? (
                           <>
-                            <Card className="shadow-sm">
-                              <CardHeader>
-                                <CardTitle className="flex items-center justify-between">
-                                  Score
-                                  {version.id === 'v2' && versionRecords['v1']?.experienceReviewResponse && (
-                                    <ScoreDeltaBadge
-                                      oldScore={versionRecords['v1'].experienceReviewResponse?.result?.ux_score?.design_score}
-                                      newScore={erResponse.result.ux_score.design_score}
-                                    />
-                                  )}
-                                </CardTitle>
-                              </CardHeader>
-                              <CardContent className="space-y-4">
-                                <div className="bg-linear-to-br from-green-50 to-green-100 dark:from-green-950 dark:to-green-900 p-6 rounded-lg">
-                                  {version.id === 'v2' && versionRecords['v1']?.experienceReviewResponse ? (
-                                    <ScoreComparison
-                                      oldScore={versionRecords['v1'].experienceReviewResponse?.result?.ux_score?.design_score}
-                                      newScore={erResponse.result.ux_score.design_score}
-                                      showPercentage
-                                    />
-                                  ) : (
-                                    <div className="text-5xl font-bold text-green-600 dark:text-green-400">
-                                      {erResponse.result.ux_score.design_score}
-                                      <span className="text-2xl text-muted-foreground ml-1">/100</span>
+                            {erResponse.result?.ux_score ? (
+                              <>
+                                <Card className="shadow-sm">
+                                  <CardHeader>
+                                    <CardTitle className="flex items-center justify-between">
+                                      Score
+                                      {version.id === 'v2' && versionRecords['v1']?.experienceReviewResponse && (
+                                        <ScoreDeltaBadge
+                                          oldScore={versionRecords['v1'].experienceReviewResponse?.result?.ux_score?.design_score}
+                                          newScore={erResponse.result.ux_score.design_score}
+                                        />
+                                      )}
+                                    </CardTitle>
+                                  </CardHeader>
+                                  <CardContent className="space-y-4">
+                                    <div className="bg-linear-to-br from-green-50 to-green-100 dark:from-green-950 dark:to-green-900 p-6 rounded-lg">
+                                      {version.id === 'v2' && versionRecords['v1']?.experienceReviewResponse ? (
+                                        <ScoreComparison
+                                          oldScore={versionRecords['v1'].experienceReviewResponse?.result?.ux_score?.design_score}
+                                          newScore={erResponse.result.ux_score.design_score}
+                                          showPercentage
+                                        />
+                                      ) : (
+                                        <div className="text-5xl font-bold text-green-600 dark:text-green-400">
+                                          {erResponse.result.ux_score.design_score}
+                                          <span className="text-2xl text-muted-foreground ml-1">/100</span>
+                                        </div>
+                                      )}
                                     </div>
-                                  )}
-                                </div>
 
-                                <Separator />
+                                    <Separator />
 
-                                <div className="space-y-3">
-                                  {erResponse.result.ux_score.justification.map((just, i) => (
-                                    <div key={i}>
-                                      <div className="flex justify-between mb-1">
-                                        <span className="text-sm font-medium">{just.category}</span>
-                                        <span className="text-sm text-muted-foreground">
-                                          {just.score}
-                                        </span>
-                                      </div>
-                                      <ExpandableText
-                                        text={just.description}
-                                        maxLength={150}
-                                        className="text-xs text-muted-foreground"
-                                      />
+                                    <div className="space-y-3">
+                                      {erResponse.result.ux_score.justification?.map((just, i) => (
+                                        <div key={i}>
+                                          <div className="flex justify-between mb-1">
+                                            <span className="text-sm font-medium">{just.category}</span>
+                                            <span className="text-sm text-muted-foreground">
+                                              {just.score}
+                                            </span>
+                                          </div>
+                                          <ExpandableText
+                                            text={just.description}
+                                            maxLength={150}
+                                            className="text-xs text-muted-foreground"
+                                          />
+                                        </div>
+                                      ))}
                                     </div>
-                                  ))}
-                                </div>
-                              </CardContent>
-                            </Card>
+                                  </CardContent>
+                                </Card>
+                              </>
+                            ) : (
+                              <Card className="shadow-sm">
+                                <CardContent className="py-8 text-center">
+                                  <p className="text-sm text-muted-foreground">
+                                    UX Score data not available for this version
+                                  </p>
+                                </CardContent>
+                              </Card>
+                            )}
 
-                            <Card className="shadow-sm">
-                              <CardHeader>
-                                <CardTitle>Recommendations</CardTitle>
-                                <CardDescription>
-                                  {erResponse.result.recommendations.length} recommendation
-                                  {erResponse.result.recommendations.length !== 1 ? 's' : ''}
-                                </CardDescription>
-                              </CardHeader>
-                              <CardContent className="space-y-3">
-                                {erResponse.result.recommendations.map((rec, i) => (
+                            {erResponse.result?.recommendations && erResponse.result.recommendations.length > 0 ? (
+                              <Card className="shadow-sm">
+                                <CardHeader>
+                                  <CardTitle>Recommendations</CardTitle>
+                                  <CardDescription>
+                                    {erResponse.result.recommendations.length} recommendation
+                                    {erResponse.result.recommendations.length !== 1 ? 's' : ''}
+                                  </CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-3">
+                                  {erResponse.result.recommendations.map((rec, i) => (
                                   <div
                                     key={i}
                                     className="p-3 border rounded-lg space-y-2 transition-smooth hover:shadow-md hover:border-green-500/50 bg-card"
@@ -482,9 +534,10 @@ export default async function CompanyDetailPage({ params }: PageProps) {
                                       className="text-xs text-muted-foreground"
                                     />
                                   </div>
-                                ))}
-                              </CardContent>
-                            </Card>
+                                  ))}
+                                </CardContent>
+                              </Card>
+                            ) : null}
                           </>
                         ) : (
                           <Card className="shadow-sm">

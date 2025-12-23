@@ -10,12 +10,13 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { ChevronRight } from "lucide-react";
 import { ClickableTableRow } from "@/components/clickable-table-row";
-import parsedDataV2 from "@/data/parsed-data-v2.json";
+import parsedData from "@/data/parsed-data.json";
 import type { VersionedData } from "@/types/review-data";
 import { slugify } from "@/lib/slugify";
 
-// Use latest version (v2) for the main table
-const data = (parsedDataV2 as VersionedData).data;
+// Use latest version for the main table
+const versionedData = parsedData as VersionedData;
+const data = versionedData.data;
 
 export default function Home() {
   return (
@@ -67,8 +68,8 @@ export default function Home() {
                     <TableCell>
                       <a
                         href={record.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
+            target="_blank"
+            rel="noopener noreferrer"
                         className="text-sm text-muted-foreground hover:text-foreground hover:underline truncate block max-w-[300px] transition-smooth"
                       >
                         {record.url}
