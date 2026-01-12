@@ -21,11 +21,15 @@ const versionsIndex = versionsIndexData as VersionsIndex;
 import v1Data from "@/data/parsed-data-v1.json";
 import v2Data from "@/data/parsed-data-v2.json";
 import v3Data from "@/data/parsed-data-v3.json";
+import v3_1Data from "@/data/parsed-data-v3_1.json";
+import v3_2Data from "@/data/parsed-data-v3_2.json";
 
 const versionDataMap: Record<string, ParsedData> = {
   v1: (v1Data as VersionedData).data,
   v2: (v2Data as VersionedData).data,
   v3: (v3Data as VersionedData).data,
+  v3_1: (v3_1Data as VersionedData).data,
+  v3_2: (v3_2Data as unknown as VersionedData).data,
 };
 
 export function generateStaticParams() {
@@ -59,9 +63,14 @@ export default async function CompanyDetailPage({ params }: PageProps) {
     }
   });
 
-  // Use the latest version for primary company info
-  const latestVersion = versionsIndex.versions.find((v) => v.isLatest);
-  const record = latestVersion ? versionRecords[latestVersion.id] : null;
+  // Use the latest available version that has data for this company
+  let record: ReviewRecord | null = null;
+  for (const versionId of [...availableVersions].reverse()) {
+    if (versionRecords[versionId]) {
+      record = versionRecords[versionId];
+      break;
+    }
+  }
 
   if (!record) {
     notFound();
@@ -102,7 +111,7 @@ export default async function CompanyDetailPage({ params }: PageProps) {
               <CardTitle className="text-lg">Version Comparison Guide</CardTitle>
               <CardDescription>Understanding the differences between each version</CardDescription>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
               <div className="p-4 border rounded-lg space-y-2">
                 <div className="flex items-center gap-2">
                   <Badge variant="outline">Version 1</Badge>
@@ -121,33 +130,68 @@ export default async function CompanyDetailPage({ params }: PageProps) {
                   Same as Version 1 with updated screenshot capture API for improved screenshot capture
                 </p>
               </div>
-              <div className="p-4 border rounded-lg space-y-2 border-primary/50 bg-primary/5">
+              <div className="p-4 border rounded-lg space-y-2">
                 <div className="flex items-center gap-2">
-                  <Badge variant="default">Version 3</Badge>
+                  <Badge variant="outline">Version 3</Badge>
                   <span className="text-xs text-muted-foreground">Dec 22, 2025</span>
                 </div>
                 <p className="text-sm text-muted-foreground">
                   Experience Review with Cognition API integrated 
                 </p>
               </div>
+              <div className="p-4 border rounded-lg space-y-2">
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline">Version 3.1</Badge>
+                  <span className="text-xs text-muted-foreground">Jan 12, 2026</span>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Experience Review with enhanced Design score prompt from Ankit 
+                </p>
+              </div>
+              <div className="p-4 border rounded-lg space-y-2 border-primary/50 bg-primary/5">
+                <div className="flex items-center gap-2">
+                  <Badge variant="default">Version 3.2</Badge>
+                  <span className="text-xs text-muted-foreground">Jan 12, 2026</span>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Detailed design score prompt by Sowrabh 
+                </p>
+              </div>
             </CardContent>
           </Card>
 
           {/* Global Version Tabs */}
-          <Tabs defaultValue="v3" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 max-w-2xl">
+          <Tabs defaultValue={availableVersions.includes('v3_2') ? 'v3_2' : availableVersions[availableVersions.length - 1]} className="w-full">
+            <TabsList className={`grid w-full ${
+              (() => {
+                const visibleCount = versionsIndex.versions.filter(v => 
+                  (v.id !== 'v3' && v.id !== 'v3_1' && v.id !== 'v3_2') || availableVersions.includes(v.id)
+                ).length;
+                return visibleCount === 1 ? 'grid-cols-1 max-w-xs' :
+                       visibleCount === 2 ? 'grid-cols-2 max-w-lg' :
+                       visibleCount === 3 ? 'grid-cols-3 max-w-2xl' : 
+                       visibleCount === 4 ? 'grid-cols-2 sm:grid-cols-4 max-w-3xl' : 
+                       'grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 max-w-4xl';
+              })()
+            }`}>
               {versionsIndex.versions.map((version) => {
                 const hasData = availableVersions.includes(version.id);
+                
+                // Hide v3, v3.1 and v3.2 tabs if no data
+                if ((version.id === 'v3' || version.id === 'v3_1' || version.id === 'v3_2') && !hasData) {
+                  return null;
+                }
                 
                 return (
                   <TabsTrigger 
                     key={version.id} 
                     value={version.id}
                     disabled={!hasData}
+                    className="text-xs sm:text-sm"
                   >
-                    {version.label} ({formatVersionDateShort(version.date)})
+                    <span className="truncate">{version.label} ({formatVersionDateShort(version.date)})</span>
                     {version.isLatest && (
-                      <Badge variant="default" className="ml-2 text-[9px] px-1 py-0">
+                      <Badge variant="default" className="ml-1 sm:ml-2 text-[9px] px-1 py-0">
                         Latest
                       </Badge>
                     )}

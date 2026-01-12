@@ -10,13 +10,47 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { ChevronRight } from "lucide-react";
 import { ClickableTableRow } from "@/components/clickable-table-row";
-import parsedData from "@/data/parsed-data.json";
-import type { VersionedData } from "@/types/review-data";
+import versionsIndexData from "@/data/versions-index.json";
+import v1Data from "@/data/parsed-data-v1.json";
+import v2Data from "@/data/parsed-data-v2.json";
+import v3Data from "@/data/parsed-data-v3.json";
+import v3_1Data from "@/data/parsed-data-v3_1.json";
+import v3_2Data from "@/data/parsed-data-v3_2.json";
+import type { VersionedData, VersionsIndex, ReviewRecord } from "@/types/review-data";
 import { slugify } from "@/lib/slugify";
 
-// Use latest version for the main table
-const versionedData = parsedData as VersionedData;
-const data = versionedData.data;
+// Load all version data
+const versionsIndex = versionsIndexData as VersionsIndex;
+const allVersionData = [
+  v1Data as VersionedData,
+  v2Data as VersionedData,
+  v3Data as VersionedData,
+  v3_1Data as VersionedData,
+  v3_2Data as unknown as VersionedData,
+];
+
+// Create a map of all unique companies with data from any version
+// Priority: v3_2 > v3_1 > v3 > v2 > v1 (use latest version first)
+const companyRecordsMap = new Map<string, ReviewRecord>();
+// Iterate in reverse order so latest versions overwrite older ones
+allVersionData.reverse().forEach(versionData => {
+  versionData.data.records.forEach(record => {
+    const slug = slugify(record.name);
+    if (!companyRecordsMap.has(slug)) {
+      companyRecordsMap.set(slug, record);
+    }
+  });
+});
+
+// Get all unique companies sorted by name
+const allCompanies = versionsIndex.companies
+  .map(company => ({
+    slug: company.slug,
+    name: company.companyName,
+    record: companyRecordsMap.get(company.slug)
+  }))
+  .filter(company => company.record !== undefined)
+  .sort((a, b) => a.name.localeCompare(b.name));
 
 export default function Home() {
   return (
@@ -27,7 +61,7 @@ export default function Home() {
             Experience Review Tests
           </h1>
           <p className="text-muted-foreground text-lg">
-            Compare LLM responses with Experience Review feedback across {data.records.length} companies
+            Compare LLM responses with Experience Review feedback across {allCompanies.length} companies
           </p>
         </div>
 
@@ -44,38 +78,38 @@ export default function Home() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {data.records.map((record) => {
+              {allCompanies.map((company) => {
+                const record = company.record!;
                 const llmScore = record.llmResponse?.design_score?.total_score;
                 const uxScore = record.experienceReviewResponse?.result?.ux_score?.design_score;
                 const llmRecommendations = record.llmResponse?.recommendations?.length || 0;
                 const erRecommendations = record.experienceReviewResponse?.result?.recommendations?.length || 0;
-                const companySlug = slugify(record.name);
 
                 return (
                   <ClickableTableRow 
-                    key={record.name}
-                    href={`/companies/${companySlug}`}
+                    key={company.slug}
+                    href={`/companies/${company.slug}`}
                     className="cursor-pointer group hover:bg-muted/50"
                   >
-                    <TableCell>
+                    <TableCell className="min-w-[150px]">
                       <Link
-                        href={`/companies/${companySlug}`}
+                        href={`/companies/${company.slug}`}
                         className="font-medium group-hover:text-primary transition-smooth capitalize block"
                       >
-                        {record.name}
+                        {company.name}
                       </Link>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="min-w-[200px] max-w-[300px]">
                       <a
                         href={record.url}
             target="_blank"
             rel="noopener noreferrer"
-                        className="text-sm text-muted-foreground hover:text-foreground hover:underline truncate block max-w-[300px] transition-smooth"
+                        className="text-sm text-muted-foreground hover:text-foreground hover:underline truncate block transition-smooth"
                       >
                         {record.url}
                       </a>
                     </TableCell>
-                    <TableCell className="text-center">
+                    <TableCell className="text-center whitespace-nowrap">
                       {llmScore !== undefined ? (
                         <Badge 
                           variant="default"
@@ -87,7 +121,7 @@ export default function Home() {
                         <span className="text-muted-foreground text-sm">-</span>
                       )}
                     </TableCell>
-                    <TableCell className="text-center">
+                    <TableCell className="text-center whitespace-nowrap">
                       {uxScore !== undefined ? (
                         <Badge 
                            variant="default"
@@ -99,7 +133,7 @@ export default function Home() {
                         <span className="text-muted-foreground text-sm">-</span>
                       )}
                     </TableCell>
-                    <TableCell className="text-center">
+                    <TableCell className="text-center whitespace-nowrap">
                       <div className="flex items-center justify-center gap-2">
                         <span className="text-sm font-medium">
                           Gemini {llmRecommendations}  
@@ -110,9 +144,9 @@ export default function Home() {
                         </span>
                       </div>
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right whitespace-nowrap">
                       <Link
-                        href={`/companies/${companySlug}`}
+                        href={`/companies/${company.slug}`}
                         className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground group-hover:text-primary transition-smooth"
                       >
                         View Details
@@ -128,8 +162,8 @@ export default function Home() {
 
         <div className="mt-6 text-sm text-muted-foreground">
           <p>
-            Last updated: {new Date(data.generatedAt).toLocaleDateString()} at{" "}
-            {new Date(data.generatedAt).toLocaleTimeString()}
+            Last updated: {new Date(versionsIndex.generatedAt).toLocaleDateString()} at{" "}
+            {new Date(versionsIndex.generatedAt).toLocaleTimeString()}
           </p>
         </div>
       </div>
