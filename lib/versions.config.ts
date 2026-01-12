@@ -99,6 +99,20 @@ export const versions: VersionConfig[] = [
     filename: 'experience_review_with_cognition_22_dec.csv',
     date: '2025-12-22', // Extracted from filename: 22_dec
     label: 'Version 3',
+    isLatest: false,
+  },
+  {
+    id: 'v3_1',
+    filename: 'experience_review_12_jan_v3_1.csv',
+    date: '2026-01-12', // Extracted from filename: 12_jan
+    label: 'Version 3.1',
+    isLatest: false,
+  },
+  {
+    id: 'v3_2',
+    filename: 'experience_review__12_jan_v3_2.csv',
+    date: '2026-01-12', // Extracted from filename: 12_jan
+    label: 'Version 3.2',
     isLatest: true,
   },
 ];

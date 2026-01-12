@@ -36,7 +36,51 @@ function safeJSONParse<T>(jsonString: string): T | null {
   }
 }
 
-function parseCSVFile(filename: string): ReviewRecord[] {
+/**
+ * Load LLM Response data from v2 CSV and create a map by company name
+ */
+function loadLLMResponseMap(): Map<string, LLMResponse> {
+  const llmMap = new Map<string, LLMResponse>();
+  const v2Config = versions.find(v => v.id === 'v2');
+  
+  if (!v2Config) {
+    console.warn('⚠️  v2 version config not found, cannot load LLM responses');
+    return llmMap;
+  }
+
+  const csvFilePath = path.join(process.cwd(), v2Config.filename);
+  
+  if (!fs.existsSync(csvFilePath)) {
+    console.warn(`⚠️  v2 CSV file not found: ${v2Config.filename}`);
+    return llmMap;
+  }
+
+  console.log(`📖 Loading LLM responses from ${v2Config.filename}...`);
+  const csvContent = fs.readFileSync(csvFilePath, 'utf-8');
+
+  const parseResult = Papa.parse<CSVRow>(csvContent, {
+    header: true,
+    skipEmptyLines: true,
+    transformHeader: (header: string) => header.trim(),
+  });
+
+  parseResult.data.forEach((row) => {
+    const companyName = row.Name?.toLowerCase().trim();
+    const llmResponseStr = row['LLM Response'] || row['LLM Response (Gemini)'] || '';
+    
+    if (companyName && llmResponseStr) {
+      const llmResponse = safeJSONParse<LLMResponse>(llmResponseStr);
+      if (llmResponse) {
+        llmMap.set(companyName, llmResponse);
+      }
+    }
+  });
+
+  console.log(`✅ Loaded ${llmMap.size} LLM responses from v2\n`);
+  return llmMap;
+}
+
+function parseCSVFile(filename: string, llmResponseMap?: Map<string, LLMResponse>): ReviewRecord[] {
   const csvFilePath = path.join(process.cwd(), filename);
   
   if (!fs.existsSync(csvFilePath)) {
@@ -52,6 +96,9 @@ function parseCSVFile(filename: string): ReviewRecord[] {
     transformHeader: (header: string) => header.trim(),
   });
 
+  let mergedCount = 0;
+  let notFoundCount = 0;
+
   const records: ReviewRecord[] = parseResult.data.map((row) => {
     // Parse actions (comma-separated string)
     const actions = row.Actions
@@ -65,11 +112,23 @@ function parseCSVFile(filename: string): ReviewRecord[] {
 
     // Parse JSON columns (handle different column name variations)
     const targetAudience = safeJSONParse<TargetAudienceData>(row['Target Audience']);
-    const llmResponse = safeJSONParse<LLMResponse>(row['LLM Response'] || row['LLM Response (Gemini)'] || '');
+    let llmResponse = safeJSONParse<LLMResponse>(row['LLM Response'] || row['LLM Response (Gemini)'] || '');
     const sessionData = row['Session Data'] ? safeJSONParse<SessionData>(row['Session Data']) : null;
     const experienceReviewResponse = safeJSONParse<ExperienceReviewResponse>(
       row['Start Action Response'] || row['Start Action Response (experience review)'] || ''
     );
+
+    // Merge LLM response from map if available and not already present
+    if (llmResponseMap && !llmResponse && row.Name) {
+      const companyKey = row.Name.toLowerCase().trim();
+      const mergedLLM = llmResponseMap.get(companyKey);
+      if (mergedLLM) {
+        llmResponse = mergedLLM;
+        mergedCount++;
+      } else {
+        notFoundCount++;
+      }
+    }
 
     return {
       name: row.Name || '',
@@ -87,12 +146,29 @@ function parseCSVFile(filename: string): ReviewRecord[] {
     };
   });
 
-  return records;
+  if (llmResponseMap) {
+    console.log(`   🔗 Merged ${mergedCount} LLM responses`);
+    if (notFoundCount > 0) {
+      console.log(`   ⚠️  ${notFoundCount} companies without matching LLM data in v2`);
+    }
+  }
+
+  // Filter out records with empty names
+  const validRecords = records.filter(record => record.name && record.name.trim() !== '');
+  const filteredCount = records.length - validRecords.length;
+  if (filteredCount > 0) {
+    console.log(`   🗑️  Filtered out ${filteredCount} records with empty names`);
+  }
+
+  return validRecords;
 }
 
-function generateVersionedData(version: VersionConfig): VersionedData {
+function generateVersionedData(version: VersionConfig, llmResponseMap?: Map<string, LLMResponse>): VersionedData {
   console.log(`📊 Parsing ${version.filename}...`);
-  const records = parseCSVFile(version.filename);
+  
+  // Check if this version needs LLM data merged
+  const needsLLMMerge = version.id === 'v3_1' || version.id === 'v3_2';
+  const records = parseCSVFile(version.filename, needsLLMMerge ? llmResponseMap : undefined);
   
   const data: ParsedData = {
     records,
@@ -127,10 +203,17 @@ function generateVersionsIndex(versionedDataList: VersionedData[]): VersionsInde
 
   const companies: CompanyVersionAvailability[] = Array.from(companyMap.entries()).map(
     ([slug, versionIds]) => {
-      // Get company name from the latest version that has it
-      const latestVersion = versionedDataList.find(v => v.version.isLatest);
-      const record = latestVersion?.data.records.find(r => slugify(r.name) === slug);
-      const companyName = record?.name || slug;
+      // Get company name from any version that has it (prefer latest versions)
+      let companyName = slug;
+      
+      // Search through all versions to find the company name (latest first)
+      for (const versionedData of [...versionedDataList].reverse()) {
+        const record = versionedData.data.records.find(r => slugify(r.name) === slug);
+        if (record) {
+          companyName = record.name;
+          break;
+        }
+      }
 
       return {
         companyName,
@@ -157,11 +240,15 @@ function generateAllVersions() {
 
   console.log('🚀 Starting multi-version CSV parsing...\n');
 
+  // Check if any version needs LLM merging
+  const needsLLMMerge = versions.some(v => v.id === 'v3_1' || v.id === 'v3_2');
+  const llmResponseMap = needsLLMMerge ? loadLLMResponseMap() : undefined;
+
   // Parse all versions
   const versionedDataList: VersionedData[] = [];
   
   for (const version of versions) {
-    const versionedData = generateVersionedData(version);
+    const versionedData = generateVersionedData(version, llmResponseMap);
     versionedDataList.push(versionedData);
 
     // Write individual version file
